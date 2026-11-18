@@ -32,11 +32,15 @@ export function PrintInvoiceModal({
   const handleDownloadHtml = () => {
     const el = document.getElementById('tjd-a4-invoice-sheet');
     if (!el) return;
+    const safeTitle = gatePass.gpNo
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
     const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>${gatePass.gpNo} - Non-Stock Gate Pass</title>
+<title>${safeTitle} - DXC Machines Dispatch Request Form</title>
 <style>
   @page { size: A4 portrait; margin: 10mm; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; margin: 0; padding: 16px; font-size: 11px; }

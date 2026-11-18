@@ -771,6 +771,9 @@ function ensureDb(): DatabaseSchema {
         ? parsed.sequenceCounter
         : defaults.sequenceCounter,
   };
+  if (!hasHdtn) {
+    saveDb(db);
+  }
   return db;
 }
 

@@ -210,35 +210,46 @@ export function DepartmentMasterPage({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((dept) => (
-                  <tr key={dept.id} className="border-b border-[#EAEDF5] hover:bg-[#F7F8FC]">
-                    <td className="px-3 py-2.5 font-mono font-bold text-[#2B3352]">{dept.code}</td>
-                    <td className="px-3 py-2.5 font-medium text-[#1C2130]">{dept.name}</td>
-                    <td className="px-3 py-2.5 font-mono text-[#4A5168]">{dept.costCenter || '-'}</td>
-                    <td className="px-3 py-2.5 text-[#374151]">{dept.hodName || '-'}</td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`font-bold text-[11px] ${
-                          dept.active ? 'text-[#15803D]' : 'text-[#DC2626]'
-                        }`}
-                      >
-                        {dept.active ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={canEdit ? 6 : 5}
+                      className="px-4 py-8 text-center text-[#5A627A]"
+                    >
+                      No departments match your search filter.
                     </td>
-                    {canEdit && (
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(dept)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#2B3352] hover:underline"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          Edit
-                        </button>
-                      </td>
-                    )}
                   </tr>
-                ))}
+                ) : (
+                  filtered.map((dept) => (
+                    <tr key={dept.id} className="border-b border-[#EAEDF5] hover:bg-[#F7F8FC]">
+                      <td className="px-3 py-2.5 font-mono font-bold text-[#2B3352]">{dept.code}</td>
+                      <td className="px-3 py-2.5 font-medium text-[#1C2130]">{dept.name}</td>
+                      <td className="px-3 py-2.5 font-mono text-[#4A5168]">{dept.costCenter || '-'}</td>
+                      <td className="px-3 py-2.5 text-[#374151]">{dept.hodName || '-'}</td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`font-bold text-[11px] ${
+                            dept.active ? 'text-[#15803D]' : 'text-[#DC2626]'
+                          }`}
+                        >
+                          {dept.active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                      {canEdit && (
+                        <td className="px-3 py-2.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(dept)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[#2B3352] hover:underline"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Edit
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

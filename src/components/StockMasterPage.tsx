@@ -255,43 +255,54 @@ export function StockMasterPage({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.id} className="border-b border-[#EAEDF5] hover:bg-[#F7F8FC]">
-                    <td className="px-3 py-2.5 font-mono font-bold text-[#2B3352] whitespace-nowrap">
-                      {item.stockNo}
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={canEdit ? 7 : 6}
+                      className="px-4 py-8 text-center text-[#5A627A]"
+                    >
+                      No catalog items match your search filter.
                     </td>
-                    <td className="px-3 py-2.5">
-                      <div className="font-medium text-[#1C2130]">{item.description}</div>
-                      <div className="text-[11px] text-[#6B7280]">{item.category}</div>
-                    </td>
-                    <td className="px-3 py-2.5 text-center font-mono">{item.uom}</td>
-                    <td className="px-3 py-2.5 font-mono text-[#4A5168]">{item.hsnCode || '-'}</td>
-                    <td className="px-3 py-2.5 text-right font-mono font-semibold">
-                      Rs. {formatINR(item.unitPrice)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`font-bold text-[11px] ${
-                          item.active ? 'text-[#15803D]' : 'text-[#DC2626]'
-                        }`}
-                      >
-                        {item.active ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
-                    </td>
-                    {canEdit && (
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(item)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#2B3352] hover:underline"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          Edit
-                        </button>
-                      </td>
-                    )}
                   </tr>
-                ))}
+                ) : (
+                  filtered.map((item) => (
+                    <tr key={item.id} className="border-b border-[#EAEDF5] hover:bg-[#F7F8FC]">
+                      <td className="px-3 py-2.5 font-mono font-bold text-[#2B3352] whitespace-nowrap">
+                        {item.stockNo}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="font-medium text-[#1C2130]">{item.description}</div>
+                        <div className="text-[11px] text-[#6B7280]">{item.category}</div>
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-mono">{item.uom}</td>
+                      <td className="px-3 py-2.5 font-mono text-[#4A5168]">{item.hsnCode || '-'}</td>
+                      <td className="px-3 py-2.5 text-right font-mono font-semibold">
+                        Rs. {formatINR(item.unitPrice)}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <span
+                          className={`font-bold text-[11px] ${
+                            item.active ? 'text-[#15803D]' : 'text-[#DC2626]'
+                          }`}
+                        >
+                          {item.active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                      {canEdit && (
+                        <td className="px-3 py-2.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(item)}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[#2B3352] hover:underline"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            Edit
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

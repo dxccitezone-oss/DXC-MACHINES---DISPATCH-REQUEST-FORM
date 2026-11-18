@@ -170,9 +170,11 @@ export function GatePassEntryForm({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [dispatchModalOpen, setDispatchModalOpen] = useState<boolean>(false);
   const [ackModalOpen, setAckModalOpen] = useState<boolean>(false);
+  const [rawNumInputs, setRawNumInputs] = useState<Record<string, string>>({});
 
   const prevAutoGpNoRef = useRef<string>(nextGpNo);
   const prevDefaultFromRef = useRef<string>(defaultFromAddress);
+  const prevDefaultDeptRef = useRef<string>(defaultDepartmentName);
 
   // Sync async auto-generated G.P. No without overwriting user edits
   useEffect(() => {
@@ -190,11 +192,12 @@ export function GatePassEntryForm({
     prevDefaultFromRef.current = defaultFromAddress;
   }, [defaultFromAddress, editingGatePass, gpId, fromAddress]);
 
-  // Sync default department once departments finish loading on a blank form
+  // Sync default department once departments finish loading without overwriting user edits
   useEffect(() => {
-    if (!editingGatePass && !gpId && !departmentInput && defaultDepartmentName) {
+    if (!editingGatePass && !gpId && departmentInput === prevDefaultDeptRef.current) {
       setDepartmentInput(defaultDepartmentName);
     }
+    prevDefaultDeptRef.current = defaultDepartmentName;
   }, [defaultDepartmentName, editingGatePass, gpId, departmentInput]);
 
   // Sync lifecycle status/details when an existing Gate Pass is saved, dispatched, or acknowledged
@@ -259,9 +262,19 @@ export function GatePassEntryForm({
           current.hsnCode = matched.hsnCode;
           current.pricePerUnit = matched.unitPrice;
           current.taxPercent = matched.taxPercent;
+          setRawNumInputs((r) => {
+            const copy = { ...r };
+            delete copy[`${current.id}:pricePerUnit`];
+            return copy;
+          });
         }
       } else if (field === 'quantity' || field === 'pricePerUnit' || field === 'taxPercent') {
-        const num = Number(rawValue);
+        const rawStr = String(rawValue);
+        if (field === 'quantity' || field === 'pricePerUnit') {
+          const cellKey = `${current.id}:${field}`;
+          setRawNumInputs((r) => ({ ...r, [cellKey]: rawStr }));
+        }
+        const num = rawStr.trim() === '' ? 0 : Number(rawStr);
         current[field] = Number.isFinite(num) ? Math.max(0, num) : 0;
       } else if (field === 'description' || field === 'uom' || field === 'hsnCode') {
         current[field] = String(rawValue);
@@ -923,9 +936,20 @@ export function GatePassEntryForm({
                           min="0"
                           step="any"
                           disabled={isLocked}
-                          value={row.quantity}
+                          value={
+                            rawNumInputs[`${row.id}:quantity`] !== undefined
+                              ? rawNumInputs[`${row.id}:quantity`]
+                              : row.quantity
+                          }
                           onFocus={(e) => e.currentTarget.select()}
                           onChange={(e) => handleRowFieldChange(idx, 'quantity', e.target.value)}
+                          onBlur={() =>
+                            setRawNumInputs((r) => {
+                              const copy = { ...r };
+                              delete copy[`${row.id}:quantity`];
+                              return copy;
+                            })
+                          }
                           aria-label={`Row ${row.sNo} Quantity`}
                           className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs font-mono text-right focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
                         />
@@ -936,10 +960,21 @@ export function GatePassEntryForm({
                           min="0"
                           step="0.01"
                           disabled={isLocked}
-                          value={row.pricePerUnit}
+                          value={
+                            rawNumInputs[`${row.id}:pricePerUnit`] !== undefined
+                              ? rawNumInputs[`${row.id}:pricePerUnit`]
+                              : row.pricePerUnit
+                          }
                           onFocus={(e) => e.currentTarget.select()}
                           onChange={(e) =>
                             handleRowFieldChange(idx, 'pricePerUnit', e.target.value)
+                          }
+                          onBlur={() =>
+                            setRawNumInputs((r) => {
+                              const copy = { ...r };
+                              delete copy[`${row.id}:pricePerUnit`];
+                              return copy;
+                            })
                           }
                           onKeyDown={(e) => {
                             if (

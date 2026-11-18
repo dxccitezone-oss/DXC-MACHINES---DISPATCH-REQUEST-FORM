@@ -51,6 +51,15 @@
   ],
   "departments": [
     {
+      "id": "dept_hdtn",
+      "code": "HDTN",
+      "name": "HDTN",
+      "costCenter": "CC-100",
+      "hodName": "",
+      "active": true,
+      "createdAt": "2026-07-13T10:15:00.000Z"
+    },
+    {
       "id": "dept_maint",
       "code": "MAINT",
       "name": "Maintenance & Utilities",
