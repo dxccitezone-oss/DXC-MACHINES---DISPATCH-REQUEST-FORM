@@ -1,0 +1,6 @@
+{
+  "name": "TJD Non-Stock Gate Pass Portal",
+  "description": "Industrial ERP portal for managing non-stock gate passes, GST tax calculations, dispatch confirmations, receipt acknowledgements, master catalogs, and A4 printable gate pass invoices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
