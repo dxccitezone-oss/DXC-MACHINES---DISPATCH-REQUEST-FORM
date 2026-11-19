@@ -32,14 +32,12 @@ export function setStoredUserId(userId: string | null): void {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const userId = getStoredUserId();
+  const userId = getStoredUserId() || 'usr_admin';
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
-  if (userId) {
-    headers['x-user-id'] = userId;
-  }
+  headers['x-user-id'] = userId;
 
   const res = await fetch(path, {
     ...options,
@@ -176,7 +174,7 @@ export const api = {
   },
 
   saveStockItem: async (
-    item: Partial<StockItem> & { stockNo: string; description: string }
+    item: Partial<StockItem> & { description: string; vendorName?: string; stockNo?: string }
   ): Promise<StockItem> => {
     const url = item.id
       ? `/api/stock-items/${encodeURIComponent(item.id)}`
@@ -234,9 +232,8 @@ export const api = {
   }> => request('/api/export/excel/info'),
 
   downloadExcelRegister: async (): Promise<void> => {
-    const userId = getStoredUserId();
-    const headers: Record<string, string> = {};
-    if (userId) headers['x-user-id'] = userId;
+    const userId = getStoredUserId() || 'usr_admin';
+    const headers: Record<string, string> = { 'x-user-id': userId };
 
     const res = await fetch('/api/export/excel', { headers });
     if (!res.ok) {

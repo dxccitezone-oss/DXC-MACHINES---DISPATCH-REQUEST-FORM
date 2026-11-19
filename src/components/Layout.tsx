@@ -7,43 +7,36 @@ import {
   Eye,
   FilePlus2,
   LayoutDashboard,
-  LogOut,
   Menu,
   Settings,
-  Users,
   X,
 } from 'lucide-react';
-import type { PortalPage, User } from '../types/gatepass';
+import type { PortalPage } from '../types/gatepass';
 
 interface LayoutProps {
   currentPage: PortalPage;
-  currentUser: User;
   hasSelectedGatePass: boolean;
   onNavigate: (page: PortalPage) => void;
   onNewGatePass: () => void;
-  onLogout: () => void;
   children: React.ReactNode;
 }
 
 const PAGE_TITLES: Record<PortalPage, string> = {
   dashboard: 'Dashboard',
-  'new-gatepass': 'New Non-Stock Gate Pass',
+  'new-gatepass': 'Dispatch Request Form',
   'gatepass-list': 'Gate Pass List',
   'gatepass-details': 'Gate Pass Details',
   reports: 'Reports',
   departments: 'Department Master',
   'stock-master': 'Stock / Item Master',
-  users: 'User Management',
   settings: 'Settings',
 };
 
 export function Layout({
   currentPage,
-  currentUser,
   hasSelectedGatePass,
   onNavigate,
   onNewGatePass,
-  onLogout,
   children,
 }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -55,7 +48,7 @@ export function Layout({
     hidden?: boolean;
   }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'new-gatepass', label: 'New Non-Stock Gate Pass', icon: FilePlus2 },
+    { id: 'new-gatepass', label: 'Dispatch Request Form', icon: FilePlus2 },
     { id: 'gatepass-list', label: 'Gate Pass List', icon: ClipboardList },
     {
       id: 'gatepass-details',
@@ -66,12 +59,6 @@ export function Layout({
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'departments', label: 'Department Master', icon: Building2 },
     { id: 'stock-master', label: 'Stock / Item Master', icon: Boxes },
-    {
-      id: 'users',
-      label: 'User Management',
-      icon: Users,
-      hidden: currentUser.role !== 'ADMIN',
-    },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -103,7 +90,7 @@ export function Layout({
             onClick={() => onNavigate('dashboard')}
             className="text-base font-extrabold tracking-tight text-[#2B3352] whitespace-nowrap shrink-0"
           >
-            TJD GatePass ERP
+            DXC Machines
           </button>
         </div>
 
@@ -146,25 +133,6 @@ export function Layout({
           </button>
         </nav>
 
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="hidden sm:block text-right leading-tight">
-            <div className="text-xs font-bold text-[#1C2130] whitespace-nowrap">
-              {currentUser.fullName}
-            </div>
-            <div className="text-[11px] font-mono text-[#5A627A] whitespace-nowrap">
-              {currentUser.role} · {currentUser.departmentName}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onLogout}
-            className="inline-flex items-center gap-1.5 rounded border border-[#C5CBE0] bg-[#F8F9FC] px-3 py-1.5 text-xs font-semibold text-[#2E354A] hover:bg-[#ECEEF6] whitespace-nowrap shrink-0"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign Out
-          </button>
-        </div>
       </header>
 
       {/* Main Workspace */}
@@ -197,7 +165,6 @@ export function Layout({
 
           <div className="border-t border-[#D8DCEB] pt-3 px-2 text-[11px] text-[#5A627A]">
             <div className="font-semibold text-[#2E354A]">{PAGE_TITLES[currentPage]}</div>
-            <div className="mt-0.5 truncate">User: {currentUser.username}</div>
           </div>
         </aside>
 

@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { Edit2, Plus, Search } from 'lucide-react';
 import type { StockItem, User } from '../types/gatepass';
-import { formatINR } from '../utils/calculations';
+import { formatDateShort, formatINR } from '../utils/calculations';
 
 interface StockMasterPageProps {
   stockItems: StockItem[];
   currentUser: User;
   onSaveStockItem: (
-    item: Partial<StockItem> & { stockNo: string; description: string }
+    item: Partial<StockItem> & { description: string; vendorName?: string; stockNo?: string }
   ) => Promise<boolean>;
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function StockMasterPage({
@@ -23,13 +27,15 @@ export function StockMasterPage({
 
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
-  const [stockNo, setStockNo] = useState('');
+  const [vendorName, setVendorName] = useState('');
   const [description, setDescription] = useState('');
+  const [entryDate, setEntryDate] = useState(todayIsoDate);
   const [uom, setUom] = useState('NOS');
-  const [hsnCode, setHsnCode] = useState('');
-  const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [invoiceNo, setInvoiceNo] = useState('');
+  const [quantityInput, setQuantityInput] = useState<string>('0');
+  const [unitPriceInput, setUnitPriceInput] = useState<string>('0');
   const [taxPercent, setTaxPercent] = useState<number>(18);
-  const [category, setCategory] = useState('General');
+  const [receiver, setReceiver] = useState('');
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -37,34 +43,39 @@ export function StockMasterPage({
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
-      s.stockNo.toLowerCase().includes(q) ||
+      (s.vendorName || s.stockNo || '').toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
-      s.hsnCode.toLowerCase().includes(q) ||
-      s.category.toLowerCase().includes(q)
+      (s.invoiceNo || '').toLowerCase().includes(q) ||
+      (s.receiver || '').toLowerCase().includes(q) ||
+      (s.entryDate || '').toLowerCase().includes(q)
     );
   });
 
   const resetForm = () => {
     setEditingId(undefined);
-    setStockNo('');
+    setVendorName('');
     setDescription('');
+    setEntryDate(todayIsoDate());
     setUom('NOS');
-    setHsnCode('');
-    setUnitPrice(0);
+    setInvoiceNo('');
+    setQuantityInput('0');
+    setUnitPriceInput('0');
     setTaxPercent(18);
-    setCategory('General');
+    setReceiver('');
     setActive(true);
   };
 
   const handleEdit = (s: StockItem) => {
     setEditingId(s.id);
-    setStockNo(s.stockNo);
+    setVendorName(s.vendorName || s.stockNo || '');
     setDescription(s.description);
+    setEntryDate(s.entryDate || (s.createdAt ? s.createdAt.slice(0, 10) : todayIsoDate()));
     setUom(s.uom);
-    setHsnCode(s.hsnCode);
-    setUnitPrice(s.unitPrice);
+    setInvoiceNo(s.invoiceNo || '');
+    setQuantityInput(String(s.quantity ?? 0));
+    setUnitPriceInput(String(s.unitPrice));
     setTaxPercent(s.taxPercent);
-    setCategory(s.category);
+    setReceiver(s.receiver || '');
     setActive(s.active);
   };
 
@@ -73,15 +84,20 @@ export function StockMasterPage({
     if (!canEdit) return;
     setSaving(true);
     try {
+      const parsedQuantity = Math.max(0, Number(quantityInput) || 0);
+      const parsedPrice = Math.max(0, Number(unitPriceInput) || 0);
       const ok = await onSaveStockItem({
         id: editingId,
-        stockNo,
+        stockNo: vendorName,
+        vendorName,
         description,
+        entryDate,
         uom,
-        hsnCode,
-        unitPrice,
+        invoiceNo,
+        quantity: parsedQuantity,
+        unitPrice: parsedPrice,
         taxPercent,
-        category,
+        receiver,
         active,
       });
       if (ok) resetForm();
@@ -95,7 +111,7 @@ export function StockMasterPage({
       <div>
         <h1 className="text-xl font-bold text-[#1C2130]">Stock / Item Master</h1>
         <p className="text-xs text-[#5A627A] mt-0.5">
-          Catalog of reference items for instant auto-population of Description, UOM, HSN Code, and Price/Unit in Gate Passes.
+          Catalog of reference items with Vendor Name, Description, Date, UOM, Invoice No, Quantity, Price / Unit, and Receiver.
         </p>
       </div>
 
@@ -119,16 +135,16 @@ export function StockMasterPage({
           <form onSubmit={handleSubmit} className="p-4 space-y-3 text-xs">
             <div>
               <label className="block font-bold text-[#2E354A] mb-1">
-                Stock No <span className="text-[#DC2626]">*</span>
+                Vendor Name <span className="text-[#DC2626]">*</span>
               </label>
               <input
                 type="text"
                 required
                 disabled={!canEdit}
-                value={stockNo}
-                onChange={(e) => setStockNo(e.target.value.toUpperCase())}
-                placeholder="e.g. NS-HYD-105"
-                className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 font-mono uppercase focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
+                value={vendorName}
+                onChange={(e) => setVendorName(e.target.value)}
+                placeholder="e.g. Bharat Hydraulics Pvt. Ltd."
+                className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
               />
             </div>
 
@@ -147,6 +163,17 @@ export function StockMasterPage({
               />
             </div>
 
+            <div>
+              <label className="block font-bold text-[#2E354A] mb-1">Date</label>
+              <input
+                type="date"
+                disabled={!canEdit}
+                value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+                className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 font-mono focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-[#2E354A] mb-1">UOM</label>
@@ -161,40 +188,55 @@ export function StockMasterPage({
                 />
               </div>
               <div>
-                <label className="block font-bold text-[#2E354A] mb-1">HSN Code</label>
+                <label className="block font-bold text-[#2E354A] mb-1">Invoice No</label>
                 <input
                   type="text"
                   disabled={!canEdit}
-                  value={hsnCode}
-                  onChange={(e) => setHsnCode(e.target.value)}
-                  placeholder="84812000"
+                  value={invoiceNo}
+                  onChange={(e) => setInvoiceNo(e.target.value)}
+                  placeholder="e.g. INV-2026-001"
                   className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 font-mono focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block font-bold text-[#2E354A] mb-1">Price / Unit (Rs.)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                disabled={!canEdit}
-                value={unitPrice}
-                onFocus={(e) => e.currentTarget.select()}
-                onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
-                className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 font-mono text-right focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-[#2E354A] mb-1">Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  disabled={!canEdit}
+                  value={quantityInput}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => setQuantityInput(e.target.value)}
+                  className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 font-mono text-right focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-[#2E354A] mb-1">Price / Unit (Rs.)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  disabled={!canEdit}
+                  value={unitPriceInput}
+                  onFocus={(e) => e.currentTarget.select()}
+                  onChange={(e) => setUnitPriceInput(e.target.value)}
+                  className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 font-mono text-right focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block font-bold text-[#2E354A] mb-1">Category</label>
+              <label className="block font-bold text-[#2E354A] mb-1">Receiver</label>
               <input
                 type="text"
                 disabled={!canEdit}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Hydraulics / Electrical / Metrology"
+                value={receiver}
+                onChange={(e) => setReceiver(e.target.value)}
+                placeholder="Receiver name / person"
                 className="w-full rounded border border-[#BFC5D9] px-2.5 py-1.5 focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
               />
             </div>
@@ -207,7 +249,7 @@ export function StockMasterPage({
                 onChange={(e) => setActive(e.target.checked)}
                 className="accent-[#2B3352]"
               />
-              <span className="font-semibold text-[#1C2130]">Active in Item Autocomplete</span>
+              <span className="font-semibold text-[#1C2130]">Active</span>
             </label>
 
             {canEdit && (
@@ -235,7 +277,7 @@ export function StockMasterPage({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search stock no, description, HSN..."
+                placeholder="Search vendor, description, invoice no, receiver..."
                 className="w-full rounded border border-[#BFC5D9] bg-white pl-8 pr-2.5 py-1 text-xs focus:border-[#2B3352] focus:outline-none"
               />
             </div>
@@ -245,11 +287,14 @@ export function StockMasterPage({
             <table className="w-full border-collapse text-xs">
               <thead className="bg-[#F5F6FA] border-b border-[#DFE3F0] text-[#3E455B]">
                 <tr>
-                  <th className="px-3 py-2.5 text-left font-bold">Stock No</th>
+                  <th className="px-3 py-2.5 text-left font-bold">Vendor Name</th>
                   <th className="px-3 py-2.5 text-left font-bold">Description</th>
+                  <th className="px-3 py-2.5 text-left font-bold">Date</th>
                   <th className="px-3 py-2.5 text-center font-bold">UOM</th>
-                  <th className="px-3 py-2.5 text-left font-bold">HSN</th>
+                  <th className="px-3 py-2.5 text-left font-bold">Invoice No</th>
+                  <th className="px-3 py-2.5 text-right font-bold">Quantity</th>
                   <th className="px-3 py-2.5 text-right font-bold">Price</th>
+                  <th className="px-3 py-2.5 text-left font-bold">Receiver</th>
                   <th className="px-3 py-2.5 text-left font-bold">Status</th>
                   {canEdit && <th className="px-3 py-2.5 text-right font-bold">Edit</th>}
                 </tr>
@@ -258,7 +303,7 @@ export function StockMasterPage({
                 {filtered.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={canEdit ? 7 : 6}
+                      colSpan={canEdit ? 10 : 9}
                       className="px-4 py-8 text-center text-[#5A627A]"
                     >
                       No catalog items match your search filter.
@@ -267,17 +312,27 @@ export function StockMasterPage({
                 ) : (
                   filtered.map((item) => (
                     <tr key={item.id} className="border-b border-[#EAEDF5] hover:bg-[#F7F8FC]">
-                      <td className="px-3 py-2.5 font-mono font-bold text-[#2B3352] whitespace-nowrap">
-                        {item.stockNo}
+                      <td className="px-3 py-2.5 font-semibold text-[#2B3352] whitespace-nowrap">
+                        {item.vendorName || item.stockNo}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="font-medium text-[#1C2130]">{item.description}</div>
-                        <div className="text-[11px] text-[#6B7280]">{item.category}</div>
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-[#4A5168] whitespace-nowrap">
+                        {formatDateShort(item.entryDate || item.createdAt)}
                       </td>
                       <td className="px-3 py-2.5 text-center font-mono">{item.uom}</td>
-                      <td className="px-3 py-2.5 font-mono text-[#4A5168]">{item.hsnCode || '-'}</td>
+                      <td className="px-3 py-2.5 font-mono text-[#4A5168]">
+                        {item.invoiceNo || '-'}
+                      </td>
                       <td className="px-3 py-2.5 text-right font-mono font-semibold">
+                        {item.quantity ?? 0}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono font-semibold whitespace-nowrap">
                         Rs. {formatINR(item.unitPrice)}
+                      </td>
+                      <td className="px-3 py-2.5 text-[#1C2130]">
+                        {item.receiver || '-'}
                       </td>
                       <td className="px-3 py-2.5">
                         <span

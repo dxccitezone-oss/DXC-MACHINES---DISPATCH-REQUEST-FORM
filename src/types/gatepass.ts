@@ -12,7 +12,6 @@ export type PortalPage =
   | 'reports'
   | 'departments'
   | 'stock-master'
-  | 'users'
   | 'settings';
 
 export interface User {
@@ -44,12 +43,17 @@ export interface Department {
 export interface StockItem {
   id: string;
   stockNo: string;
+  vendorName?: string;
   description: string;
   uom: string;
   hsnCode: string;
+  invoiceNo?: string;
+  quantity?: number;
   unitPrice: number;
   taxPercent: number;
   category: string;
+  receiver?: string;
+  entryDate?: string;
   active: boolean;
   createdAt: string;
 }

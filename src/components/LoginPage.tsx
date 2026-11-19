@@ -6,36 +6,9 @@ interface LoginPageProps {
   onLogin: (username: string, password: string) => Promise<User | null>;
 }
 
-const DEMO_ACCOUNTS = [
-  {
-    username: 'admin',
-    roleLabel: 'Administrator',
-    name: 'Rajesh Sharma',
-    scope: 'Full Portal, Settings & User Management',
-  },
-  {
-    username: 'operator',
-    roleLabel: 'Store Operator',
-    name: 'Priya Nair',
-    scope: 'Create & Edit Pending Gate Passes, Stock Master',
-  },
-  {
-    username: 'supervisor',
-    roleLabel: 'Dept Supervisor',
-    name: 'Vikram Patel',
-    scope: 'Dispatch Confirmation, Acknowledgement & Departments',
-  },
-  {
-    username: 'security',
-    roleLabel: 'Gate Security',
-    name: 'Suresh Kumar',
-    scope: 'Receipt Acknowledgement & Gate Verification',
-  },
-];
-
 export function LoginPage({ onLogin }: LoginPageProps) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('password123');
+  const [username, setUsername] = useState('LINGESH');
+  const [password, setPassword] = useState('12345678');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,20 +21,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       if (!user) {
         setError('Invalid username/email or password.');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (uname: string) => {
-    setUsername(uname);
-    setPassword('password123');
-    setError('');
-    setLoading(true);
-    try {
-      await onLogin(uname, 'password123');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.');
     } finally {
@@ -98,8 +57,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </div>
         </div>
 
-        {/* Right Login Form & Role Profiles */}
-        <div className="lg:col-span-7 p-7 sm:p-8 bg-[#F9FAFC] space-y-6">
+        {/* Right Login Form */}
+        <div className="lg:col-span-7 p-7 sm:p-8 bg-[#F9FAFC] flex flex-col justify-center space-y-6">
           <div>
             <h2 className="text-lg font-bold text-[#1C2130]">Portal Sign In</h2>
             <p className="text-xs text-[#5A627A] mt-1">
@@ -163,32 +122,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               {loading ? 'Signing In...' : 'Sign In to Portal'}
             </button>
           </form>
-
-          {/* Role Access Quick Switcher */}
-          <div className="border-t border-[#DFE3F0] pt-4">
-            <p className="text-xs font-bold text-[#3E455B] mb-2.5">
-              Quick Sign-In by Role (Password: <span className="font-mono">password123</span>)
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.username}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => handleQuickLogin(acc.username)}
-                  className="text-left rounded border border-[#CBD0E0] bg-white px-3 py-2 hover:border-[#2B3352] hover:bg-[#F1F3F9] transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#1C2130]">{acc.name}</span>
-                    <span className="text-[11px] font-mono font-semibold text-[#2B3352]">
-                      {acc.roleLabel}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#5A627A] mt-0.5 line-clamp-1">{acc.scope}</p>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

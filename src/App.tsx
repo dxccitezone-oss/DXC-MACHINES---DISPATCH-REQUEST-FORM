@@ -5,14 +5,12 @@ import { GatePassDetailsPage } from './components/GatePassDetailsPage';
 import { GatePassEntryForm } from './components/GatePassEntryForm';
 import { GatePassListPage } from './components/GatePassListPage';
 import { Layout } from './components/Layout';
-import { LoginPage } from './components/LoginPage';
 import { PrintInvoiceModal } from './components/PrintInvoiceModal';
 import { ReportsPage } from './components/ReportsPage';
 import { SettingsPage } from './components/SettingsPage';
 import { StockMasterPage } from './components/StockMasterPage';
 import { ToastContainer, type ToastItem } from './components/ToastContainer';
-import { UserManagementPage } from './components/UserManagementPage';
-import { api, getStoredUserId, type SaveGatePassPayload } from './services/api';
+import { api, type SaveGatePassPayload } from './services/api';
 import type {
   CompanySettings,
   DashboardSummary,
@@ -21,15 +19,26 @@ import type {
   PortalPage,
   StockItem,
   User,
-  UserRole,
 } from './types/gatepass';
 
+const DEFAULT_PORTAL_USER: User = {
+  id: 'usr_admin',
+  username: 'LINGESH',
+  email: 'stores@tjdindustries.in',
+  fullName: 'LINGESH',
+  role: 'ADMIN',
+  departmentId: 'dept_hdtn',
+  departmentName: 'HDTN',
+  active: true,
+  createdAt: '',
+};
+
 const DEFAULT_SETTINGS: CompanySettings = {
-  companyName: 'TJD Industries Pvt. Ltd.',
-  companyAddress: 'Plot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501',
+  companyName: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION',
+  companyAddress: '29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126',
   companyGstin: '27AABCT4829K1Z8',
   homeStateCode: '27',
-  phone: '+91 20 6712 4800',
+  phone: '9488664379',
   email: 'stores@tjdindustries.in',
   gpPrefix: 'TJD/NSGP/2026-27/',
   defaultTaxPercent: 18,
@@ -37,8 +46,7 @@ const DEFAULT_SETTINGS: CompanySettings = {
 };
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [currentUser] = useState<User>(DEFAULT_PORTAL_USER);
 
   const [currentPage, setCurrentPage] = useState<PortalPage>('new-gatepass');
   const [loadingData, setLoadingData] = useState<boolean>(false);
@@ -47,7 +55,6 @@ export default function App() {
   const [gatePasses, setGatePasses] = useState<GatePass[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [settings, setSettings] = useState<CompanySettings>(DEFAULT_SETTINGS);
   const [nextGpNo, setNextGpNo] = useState<string>('TJD/NSGP/2026-27/0001');
 
@@ -72,87 +79,40 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const loadPortalData = useCallback(
-    async (user: User) => {
-      setLoadingData(true);
-      try {
-        const [dash, gpList, deptList, stockList, cfg, nextNo] = await Promise.all([
-          api.getDashboard(),
-          api.listGatePasses(),
-          api.listDepartments(),
-          api.listStockItems(),
-          api.getSettings(),
-          api.getNextGpNumber(),
-        ]);
+  const loadPortalData = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const [dash, gpList, deptList, stockList, cfg, nextNo] = await Promise.all([
+        api.getDashboard(),
+        api.listGatePasses(),
+        api.listDepartments(),
+        api.listStockItems(),
+        api.getSettings(),
+        api.getNextGpNumber(),
+      ]);
 
-        setDashboard(dash);
-        setGatePasses(gpList);
-        setDepartments(deptList);
-        setStockItems(stockList);
-        setSettings(cfg);
-        setNextGpNo(nextNo);
-
-        if (user.role === 'ADMIN') {
-          const userList = await api.listUsers();
-          setUsers(userList);
-        } else {
-          setUsers([]);
-        }
-      } catch (err) {
-        notify(
-          'error',
-          'Data Load Failed',
-          err instanceof Error ? err.message : 'Unable to load portal data.'
-        );
-      } finally {
-        setLoadingData(false);
-      }
-    },
-    [notify]
-  );
+      setDashboard(dash);
+      setGatePasses(gpList);
+      setDepartments(deptList);
+      setStockItems(stockList);
+      setSettings(cfg);
+      setNextGpNo(nextNo);
+    } catch (err) {
+      notify(
+        'error',
+        'Data Load Failed',
+        err instanceof Error ? err.message : 'Unable to load portal data.'
+      );
+    } finally {
+      setLoadingData(false);
+    }
+  }, [notify]);
 
   useEffect(() => {
-    const restoreSession = async () => {
-      const storedId = getStoredUserId();
-      if (!storedId) {
-        setAuthChecking(false);
-        return;
-      }
-      try {
-        const user = await api.me();
-        setCurrentUser(user);
-        await loadPortalData(user);
-      } catch {
-        api.logout();
-        setCurrentUser(null);
-      } finally {
-        setAuthChecking(false);
-      }
-    };
-    restoreSession();
+    loadPortalData();
   }, [loadPortalData]);
 
-  const handleLogin = async (username: string, password: string): Promise<User | null> => {
-    const user = await api.login(username, password);
-    setCurrentUser(user);
-    setCurrentPage('new-gatepass');
-    setEditingGatePass(null);
-    await loadPortalData(user);
-    notify('success', `Welcome, ${user.fullName}`, `Signed in as ${user.role}`);
-    return user;
-  };
-
-  const handleLogout = () => {
-    api.logout();
-    setCurrentUser(null);
-    setEditingGatePass(null);
-    setSelectedDetailsGp(null);
-    setPrintTargetGp(null);
-    setCurrentPage('new-gatepass');
-  };
-
   const refreshGatePassState = async (updatedGp?: GatePass) => {
-    if (!currentUser) return;
     const [dash, gpList, nextNo] = await Promise.all([
       api.getDashboard(),
       api.listGatePasses(),
@@ -294,44 +254,23 @@ export default function App() {
   };
 
   const handleSaveStockItem = async (
-    item: Partial<StockItem> & { stockNo: string; description: string }
+    item: Partial<StockItem> & { description: string; vendorName?: string; stockNo?: string }
   ): Promise<boolean> => {
     try {
       await api.saveStockItem(item);
       const list = await api.listStockItems();
       setStockItems(list);
-      notify('success', 'Stock Item Saved', `${item.stockNo} updated in catalog.`);
+      notify(
+        'success',
+        'Stock Item Saved',
+        `${item.vendorName || item.stockNo || item.description} updated in catalog.`
+      );
       return true;
     } catch (err) {
       notify(
         'error',
         'Stock Item Save Failed',
         err instanceof Error ? err.message : 'Unable to save stock item.'
-      );
-      return false;
-    }
-  };
-
-  const handleSaveUser = async (
-    user: Partial<User> & {
-      username: string;
-      fullName: string;
-      email: string;
-      role: UserRole;
-      password?: string;
-    }
-  ): Promise<boolean> => {
-    try {
-      await api.saveUser(user);
-      const list = await api.listUsers();
-      setUsers(list);
-      notify('success', 'User Saved', `${user.fullName} (${user.role})`);
-      return true;
-    } catch (err) {
-      notify(
-        'error',
-        'User Save Failed',
-        err instanceof Error ? err.message : 'Unable to save user.'
       );
       return false;
     }
@@ -355,32 +294,13 @@ export default function App() {
     }
   };
 
-  if (authChecking) {
-    return (
-      <div className="min-h-screen bg-[#EAECF3] flex items-center justify-center text-sm font-semibold text-[#2B3352]">
-        Loading TJD Gate Pass Portal...
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return (
-      <>
-        <LoginPage onLogin={handleLogin} />
-        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      </>
-    );
-  }
-
   return (
     <>
       <Layout
         currentPage={currentPage}
-        currentUser={currentUser}
         hasSelectedGatePass={Boolean(selectedDetailsGp)}
         onNavigate={setCurrentPage}
         onNewGatePass={handleOpenNewForm}
-        onLogout={handleLogout}
       >
         {currentPage === 'dashboard' && (
           <DashboardPage
@@ -396,17 +316,9 @@ export default function App() {
         {currentPage === 'new-gatepass' && (
           <GatePassEntryForm
             key={editingGatePass ? editingGatePass.id : `new-${formResetKey}`}
-            currentUser={currentUser}
-            departments={departments}
-            stockItems={stockItems}
             settings={settings}
             editingGatePass={editingGatePass}
-            nextGpNo={nextGpNo}
             onSave={handleSaveGatePass}
-            onDispatch={handleDispatchGatePass}
-            onAcknowledge={handleAcknowledgeGatePass}
-            onCallReport={() => setCurrentPage('reports')}
-            onPrintInvoice={(gp) => setPrintTargetGp(gp)}
             onDownloadExcel={handleDownloadExcel}
             onResetToNew={handleOpenNewForm}
             onNotify={notify}
@@ -462,15 +374,6 @@ export default function App() {
             stockItems={stockItems}
             currentUser={currentUser}
             onSaveStockItem={handleSaveStockItem}
-          />
-        )}
-
-        {currentPage === 'users' && (
-          <UserManagementPage
-            users={users}
-            departments={departments}
-            currentUser={currentUser}
-            onSaveUser={handleSaveUser}
           />
         )}
 

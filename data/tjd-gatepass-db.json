@@ -2,13 +2,13 @@
   "users": [
     {
       "id": "usr_admin",
-      "username": "admin",
+      "username": "LINGESH",
       "email": "admin@tjdindustries.in",
-      "fullName": "Rajesh Sharma",
+      "fullName": "LINGESH",
       "role": "ADMIN",
       "departmentId": "dept_stores",
       "departmentName": "Central Stores & Logistics",
-      "password": "password123",
+      "password": "12345678",
       "active": true,
       "createdAt": "2026-07-13T10:15:00.000Z"
     },
@@ -240,7 +240,7 @@
     {
       "id": "gp_0001",
       "gpNo": "TJD/NSGP/2026-27/0001",
-      "fromAddress": "TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India",
+      "fromAddress": "DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379",
       "sentTo": "Bharat Hydraulics & Fluid Power Pvt. Ltd.\nPlot E-18, Bhosari MIDC, Pune - 411026\nMaharashtra, India",
       "gstNo": "27AAACB7721M1Z4",
       "stCode": "27",
@@ -346,7 +346,7 @@
     {
       "id": "gp_0002",
       "gpNo": "TJD/NSGP/2026-27/0002",
-      "fromAddress": "TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India",
+      "fromAddress": "DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379",
       "sentTo": "NABL Precision Metrology Labs\n42 Peenya Industrial Area Phase II, Bengaluru - 560058\nKarnataka, India",
       "gstNo": "29AABCN4920L1Z2",
       "stCode": "29",
@@ -438,7 +438,7 @@
     {
       "id": "gp_0003",
       "gpNo": "TJD/NSGP/2026-27/0003",
-      "fromAddress": "TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India",
+      "fromAddress": "DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379",
       "sentTo": "Siemens Industrial Automation Service Center\nPlot 7B, Talegaon MIDC, Pune - 410507\nMaharashtra, India",
       "gstNo": "27AAACS4521Q1Z9",
       "stCode": "27",
@@ -514,7 +514,7 @@
     {
       "id": "gp_0004",
       "gpNo": "TJD/NSGP/2026-27/0004",
-      "fromAddress": "TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India",
+      "fromAddress": "DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379",
       "sentTo": "Heraeus Electro-Nite India Pvt. Ltd.\nGIDC Makarpura, Vadodara - 390010\nGujarat, India",
       "gstNo": "24AAACH8812D1Z7",
       "stCode": "24",
@@ -574,7 +574,7 @@
     {
       "id": "gp_0005",
       "gpNo": "TJD/NSGP/2026-27/0005",
-      "fromAddress": "TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India",
+      "fromAddress": "DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379",
       "sentTo": "Apex Tooling & Precision Grinders\nShed 14, Chakan Industrial Area Phase III, Pune - 410501\nMaharashtra, India",
       "gstNo": "27AADCA3309H1Z1",
       "stCode": "27",
@@ -649,11 +649,11 @@
     }
   ],
   "settings": {
-    "companyName": "TJD Industries Pvt. Ltd.",
-    "companyAddress": "Plot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India",
+    "companyName": "DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION",
+    "companyAddress": "29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126",
     "companyGstin": "27AABCT4829K1Z8",
     "homeStateCode": "27",
-    "phone": "+91 20 6712 4800",
+    "phone": "9488664379",
     "email": "stores@tjdindustries.in",
     "gpPrefix": "TJD/NSGP/2026-27/",
     "defaultTaxPercent": 18,

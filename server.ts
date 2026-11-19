@@ -39,7 +39,7 @@ async function startServer() {
     if (typeof headerId === 'string' && headerId.trim()) {
       return headerId.trim();
     }
-    return '';
+    return 'usr_admin';
   };
 
   // Health Check

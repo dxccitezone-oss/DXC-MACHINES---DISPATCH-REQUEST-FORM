@@ -1,23 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  CheckCircle2,
   FileSpreadsheet,
   Lock,
   Plus,
-  Printer,
   RotateCcw,
-  Save,
   Send,
   Trash2,
 } from 'lucide-react';
 import type {
   CompanySettings,
-  Department,
   GatePass,
   GatePassItem,
-  StockItem,
   TransactionType,
-  User,
 } from '../types/gatepass';
 import {
   calculateGatePassTotals,
@@ -26,15 +20,10 @@ import {
   formatDateTimeShort,
   formatINR,
 } from '../utils/calculations';
-import { ConfirmModal } from './ConfirmModal';
 
 interface GatePassEntryFormProps {
-  currentUser: User;
-  departments: Department[];
-  stockItems: StockItem[];
   settings: CompanySettings;
   editingGatePass: GatePass | null;
-  nextGpNo: string;
   onSave: (payload: {
     id?: string;
     gpNo?: string;
@@ -56,20 +45,22 @@ interface GatePassEntryFormProps {
     remarks: string;
     items: GatePassItem[];
   }) => Promise<GatePass | null>;
-  onDispatch: (
-    id: string,
-    payload: { vehicleOrCourierRef?: string; dispatchRemarks?: string }
-  ) => Promise<GatePass | null>;
-  onAcknowledge: (
-    id: string,
-    payload: { receivedBy: string; remarks?: string }
-  ) => Promise<GatePass | null>;
-  onCallReport: () => void;
-  onPrintInvoice: (gp: GatePass) => void;
   onDownloadExcel: () => void;
   onResetToNew: () => void;
   onNotify: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => void;
 }
+
+const DESPATCH_THRU_OPTIONS = ['AIR', 'ROAD', 'HAND CARRY'] as const;
+
+const DESCRIPTION_OPTIONS = [
+  'CARAT METER',
+  'LIGHT SCOPE',
+  'CLARITY VIEWER',
+  'MARKING VIEWER',
+  'HEART & ARROW',
+] as const;
+
+const UOM_OPTIONS = ['NOS', 'SET'] as const;
 
 function createEmptyItem(sNo: number, defaultTax: number): GatePassItem {
   return {
@@ -91,53 +82,26 @@ function createEmptyItem(sNo: number, defaultTax: number): GatePassItem {
 }
 
 export function GatePassEntryForm({
-  currentUser,
-  departments,
-  stockItems,
   settings,
   editingGatePass,
-  nextGpNo,
   onSave,
-  onDispatch,
-  onAcknowledge,
-  onCallReport,
-  onPrintInvoice,
   onDownloadExcel,
   onResetToNew,
   onNotify,
 }: GatePassEntryFormProps) {
-  const activeDepartments = useMemo(
-    () => departments.filter((d) => d.active || d.id === editingGatePass?.departmentId),
-    [departments, editingGatePass]
-  );
-
-  const activeStockItems = useMemo(
-    () => stockItems.filter((s) => s.active),
-    [stockItems]
-  );
-
-  const defaultFromAddress = settings.companyName
-    ? `${settings.companyName}${settings.companyAddress ? `\n${settings.companyAddress}` : ''}`
-    : settings.companyAddress || '';
+  const defaultFromLine1 = [settings.companyName, settings.companyAddress]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const defaultFromAddress = settings.phone
+    ? `${defaultFromLine1}${defaultFromLine1 ? '\n' : ''}PH: ${settings.phone}`
+    : defaultFromLine1;
 
   const [gpId, setGpId] = useState<string | undefined>(editingGatePass?.id);
-  const [gpNo, setGpNo] = useState<string>(editingGatePass?.gpNo || nextGpNo);
-  const [fromAddress, setFromAddress] = useState<string>(
-    editingGatePass?.fromAddress ?? defaultFromAddress
-  );
   const [sentTo, setSentTo] = useState<string>(editingGatePass?.sentTo || '');
   const [gstNo, setGstNo] = useState<string>(editingGatePass?.gstNo || '');
   const [status, setStatus] = useState<GatePass['status']>(
     editingGatePass?.status || 'PENDING'
-  );
-  const defaultDepartmentName =
-    activeDepartments.find(
-      (d) => d.code.toUpperCase() === 'HDTN' || d.name.toUpperCase() === 'HDTN'
-    )?.name ||
-    activeDepartments[0]?.name ||
-    'HDTN';
-  const [departmentInput, setDepartmentInput] = useState<string>(
-    editingGatePass?.departmentName || defaultDepartmentName
   );
   const [preciousMaterial, setPreciousMaterial] = useState<boolean>(
     editingGatePass ? editingGatePass.preciousMaterial : false
@@ -168,52 +132,17 @@ export function GatePassEntryForm({
   );
 
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [dispatchModalOpen, setDispatchModalOpen] = useState<boolean>(false);
-  const [ackModalOpen, setAckModalOpen] = useState<boolean>(false);
   const [rawNumInputs, setRawNumInputs] = useState<Record<string, string>>({});
 
-  const prevAutoGpNoRef = useRef<string>(nextGpNo);
-  const prevDefaultFromRef = useRef<string>(defaultFromAddress);
-  const prevDefaultDeptRef = useRef<string>(defaultDepartmentName);
-
-  // Sync async auto-generated G.P. No without overwriting user edits
-  useEffect(() => {
-    if (!editingGatePass && !gpId && gpNo === prevAutoGpNoRef.current) {
-      setGpNo(nextGpNo);
-    }
-    prevAutoGpNoRef.current = nextGpNo;
-  }, [nextGpNo, editingGatePass, gpId, gpNo]);
-
-  // Sync async default From Address without overwriting user edits
-  useEffect(() => {
-    if (!editingGatePass && !gpId && fromAddress === prevDefaultFromRef.current) {
-      setFromAddress(defaultFromAddress);
-    }
-    prevDefaultFromRef.current = defaultFromAddress;
-  }, [defaultFromAddress, editingGatePass, gpId, fromAddress]);
-
-  // Sync default department once departments finish loading without overwriting user edits
-  useEffect(() => {
-    if (!editingGatePass && !gpId && departmentInput === prevDefaultDeptRef.current) {
-      setDepartmentInput(defaultDepartmentName);
-    }
-    prevDefaultDeptRef.current = defaultDepartmentName;
-  }, [defaultDepartmentName, editingGatePass, gpId, departmentInput]);
-
-  // Sync lifecycle status/details when an existing Gate Pass is saved, dispatched, or acknowledged
+  // Sync lifecycle status when an existing Gate Pass is saved, dispatched, or acknowledged
   useEffect(() => {
     if (editingGatePass) {
       setGpId(editingGatePass.id);
-      setGpNo(editingGatePass.gpNo);
       setStatus(editingGatePass.status);
     }
-  }, [editingGatePass?.id, editingGatePass?.gpNo, editingGatePass?.status]);
+  }, [editingGatePass?.id, editingGatePass?.status]);
 
   const isLocked = Boolean(gpId && status !== 'PENDING');
-  const canAcknowledge =
-    currentUser.role === 'ADMIN' ||
-    currentUser.role === 'SUPERVISOR' ||
-    currentUser.role === 'SECURITY';
 
   const totals = useMemo(() => calculateGatePassTotals(items), [items]);
   const parsedCustomAppValue = Number(customAppValueInput);
@@ -249,34 +178,15 @@ export function GatePassEntryForm({
       const updated = [...prev];
       const current = { ...updated[index] };
 
-      if (field === 'stockNo') {
-        const strVal = String(rawValue);
-        current.stockNo = strVal;
-        const matched = activeStockItems.find(
-          (s) => s.stockNo.toLowerCase() === strVal.trim().toLowerCase()
-        );
-        if (matched) {
-          current.stockNo = matched.stockNo;
-          current.description = matched.description;
-          current.uom = matched.uom;
-          current.hsnCode = matched.hsnCode;
-          current.pricePerUnit = matched.unitPrice;
-          current.taxPercent = matched.taxPercent;
-          setRawNumInputs((r) => {
-            const copy = { ...r };
-            delete copy[`${current.id}:pricePerUnit`];
-            return copy;
-          });
-        }
-      } else if (field === 'quantity' || field === 'pricePerUnit' || field === 'taxPercent') {
+      if (field === 'quantity' || field === 'taxPercent') {
         const rawStr = String(rawValue);
-        if (field === 'quantity' || field === 'pricePerUnit') {
+        if (field === 'quantity') {
           const cellKey = `${current.id}:${field}`;
           setRawNumInputs((r) => ({ ...r, [cellKey]: rawStr }));
         }
         const num = rawStr.trim() === '' ? 0 : Number(rawStr);
         current[field] = Number.isFinite(num) ? Math.max(0, num) : 0;
-      } else if (field === 'description' || field === 'uom' || field === 'hsnCode') {
+      } else if (field === 'description' || field === 'uom') {
         current[field] = String(rawValue);
       }
 
@@ -306,14 +216,8 @@ export function GatePassEntryForm({
   };
 
   const validateForm = (forDispatch = false): string | null => {
-    if (!gpNo.trim()) {
-      return 'G.P. No is mandatory (enter a custom number or click Auto).';
-    }
     if (!sentTo.trim()) {
       return 'Sent To (Company Name & Complete Address) is mandatory.';
-    }
-    if (!departmentInput.trim()) {
-      return 'Department is mandatory.';
     }
     const validRows = items.filter(
       (it) => it.description.trim() !== '' && Number(it.quantity) > 0
@@ -327,33 +231,18 @@ export function GatePassEntryForm({
     return null;
   };
 
-  const resolveDepartment = () => {
-    const q = departmentInput.trim().toLowerCase();
-    const matched = activeDepartments.find(
-      (d) =>
-        d.name.toLowerCase() === q ||
-        d.code.toLowerCase() === q ||
-        `${d.code} - ${d.name}`.toLowerCase() === q
-    );
-    return {
-      departmentId: matched?.id || '',
-      departmentName: matched?.name || departmentInput.trim(),
-    };
-  };
-
   const buildPayload = () => {
-    const resolvedDept = resolveDepartment();
     return {
       id: gpId,
-      gpNo: gpNo.trim(),
-      fromAddress: fromAddress.trim(),
+      gpNo: editingGatePass?.gpNo || '',
+      fromAddress: defaultFromAddress,
       sentTo: sentTo.trim(),
       gstNo: gstNo.trim().toUpperCase(),
       stCode: '',
       wayBillNo: '',
       docRefNo: '',
-      departmentId: resolvedDept.departmentId,
-      departmentName: resolvedDept.departmentName,
+      departmentId: editingGatePass?.departmentId || 'dept_hdtn',
+      departmentName: editingGatePass?.departmentName || 'HDTN',
       preciousMaterial,
       returnable,
       expectedDate,
@@ -366,12 +255,12 @@ export function GatePassEntryForm({
     };
   };
 
-  const handleSaveClick = async () => {
+  const handleSubmitClick = async () => {
     if (isLocked) {
       onNotify(
         'warning',
         'Record Locked',
-        `Gate Pass ${gpNo} is ${status} and cannot be edited.`
+        `Gate Pass ${editingGatePass?.gpNo || ''} is ${status} and cannot be edited.`
       );
       return;
     }
@@ -385,131 +274,11 @@ export function GatePassEntryForm({
       const saved = await onSave(buildPayload());
       if (saved) {
         setGpId(saved.id);
-        setGpNo(saved.gpNo);
         setStatus(saved.status);
       }
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleOpenDispatch = async () => {
-    if (status !== 'PENDING') {
-      onNotify('warning', 'Already Dispatched', `Gate Pass ${gpNo} is already ${status}.`);
-      return;
-    }
-    const err = validateForm(true);
-    if (err) {
-      onNotify('error', 'Dispatch Validation Failed', err);
-      return;
-    }
-    setDispatchModalOpen(true);
-  };
-
-  const handleConfirmDispatch = async (values: Record<string, string>) => {
-    setSubmitting(true);
-    try {
-      // Save latest pending changes first, then dispatch
-      const saved = await onSave(buildPayload());
-      if (!saved) return;
-      const dispatched = await onDispatch(saved.id, {
-        vehicleOrCourierRef: values.vehicleOrCourierRef || '',
-        dispatchRemarks: values.dispatchRemarks || '',
-      });
-      if (dispatched) {
-        setGpId(dispatched.id);
-        setGpNo(dispatched.gpNo);
-        setStatus(dispatched.status);
-        setDispatchModalOpen(false);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleOpenAck = () => {
-    if (!gpId || status !== 'DISPATCHED') {
-      onNotify(
-        'warning',
-        'Acknowledgement Unavailable',
-        'A Gate Pass can only be acknowledged after Dispatch is confirmed.'
-      );
-      return;
-    }
-    if (!canAcknowledge) {
-      onNotify(
-        'error',
-        'Unauthorized Action',
-        'Only Admin, Supervisor, or Security Gate roles can confirm acknowledgement.'
-      );
-      return;
-    }
-    setAckModalOpen(true);
-  };
-
-  const handleConfirmAck = async (values: Record<string, string>) => {
-    if (!gpId) return;
-    setSubmitting(true);
-    try {
-      const acked = await onAcknowledge(gpId, {
-        receivedBy: values.receivedBy || '',
-        remarks: values.remarks || '',
-      });
-      if (acked) {
-        setStatus(acked.status);
-        setAckModalOpen(false);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handlePrintClick = () => {
-    if (isLocked && editingGatePass && editingGatePass.id === gpId) {
-      onPrintInvoice(editingGatePass);
-      return;
-    }
-    // Build preview object from current form state so unsaved edits also print accurately
-    const resolvedDept = resolveDepartment();
-    const previewGp: GatePass = {
-      id: gpId || 'preview',
-      gpNo,
-      fromAddress: fromAddress.trim(),
-      sentTo: sentTo || '-',
-      gstNo,
-      stCode: '',
-      wayBillNo: '',
-      status,
-      docRefNo: '',
-      departmentId: resolvedDept.departmentId,
-      departmentName: resolvedDept.departmentName || '-',
-      preciousMaterial,
-      returnable,
-      expectedDate,
-      appValue: effectiveAppValue,
-      appValueOverridden,
-      despatchThru,
-      transactionType,
-      remarks,
-      totalQuantity: totals.totalQuantity,
-      totalTaxValue: totals.totalTaxValue,
-      grandTotal: totals.grandTotal,
-      items: items.filter((it) => it.description.trim() !== ''),
-      dispatchDetails: editingGatePass?.dispatchDetails || null,
-      acknowledgementDetails: editingGatePass?.acknowledgementDetails || null,
-      auditLog: editingGatePass?.auditLog || [],
-      createdById: editingGatePass?.createdById || currentUser.id,
-      createdByName: editingGatePass?.createdByName || currentUser.fullName,
-      createdAt: editingGatePass?.createdAt || new Date().toISOString(),
-      modifiedById: currentUser.id,
-      modifiedByName: currentUser.fullName,
-      modifiedAt: new Date().toISOString(),
-    };
-    if (previewGp.items.length === 0) {
-      onNotify('warning', 'Nothing to Print', 'Enter at least one item row before printing.');
-      return;
-    }
-    onPrintInvoice(previewGp);
   };
 
   return (
@@ -568,11 +337,9 @@ export function GatePassEntryForm({
                   <textarea
                     id="gp-from-address"
                     rows={3}
-                    disabled={isLocked}
-                    value={fromAddress}
-                    onChange={(e) => setFromAddress(e.target.value)}
-                    placeholder="Sender Plant / Unit Name & Dispatch Address"
-                    className="w-full rounded-sm border border-[#A8B0C8] bg-white px-2.5 py-1.5 text-xs text-[#111827] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6] disabled:text-[#4B5563]"
+                    readOnly
+                    value={defaultFromAddress}
+                    className="w-full rounded-sm border border-[#A8B0C8] bg-[#F5F6FA] px-2.5 py-1.5 text-xs font-medium text-[#1F2937] focus:outline-none cursor-default select-text"
                   />
                 </div>
               </div>
@@ -621,59 +388,8 @@ export function GatePassEntryForm({
               </div>
             </div>
 
-            {/* RIGHT SIDE (7 fields) */}
+            {/* RIGHT SIDE */}
             <div className="lg:col-span-6 space-y-2.5 lg:border-l lg:border-[#C7CDE0] lg:pl-4">
-              {/* 1. G.P. No */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-1.5">
-                <label
-                  htmlFor="gp-number"
-                  className="sm:col-span-4 text-xs font-bold text-[#252B3F]"
-                >
-                  G.P. No <span className="text-[#DC2626]">*</span>
-                </label>
-                <div className="sm:col-span-8 flex items-center gap-2">
-                  <input
-                    id="gp-number"
-                    type="text"
-                    disabled={isLocked}
-                    value={gpNo}
-                    onChange={(e) => setGpNo(e.target.value)}
-                    placeholder="Enter custom G.P. No"
-                    className="w-full rounded-sm border border-[#A8B0C8] bg-white px-2.5 py-1.5 text-xs font-mono font-bold text-[#1F2937] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F5F6FA]"
-                  />
-                  {!isLocked && gpNo !== (editingGatePass ? editingGatePass.gpNo : nextGpNo) && (
-                    <button
-                      type="button"
-                      onClick={() => setGpNo(editingGatePass ? editingGatePass.gpNo : nextGpNo)}
-                      className="text-[11px] font-semibold text-[#2B3352] hover:underline whitespace-nowrap shrink-0"
-                      title="Reset to auto-generated G.P. No"
-                    >
-                      Auto
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 2. Department */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-1.5">
-                <label
-                  htmlFor="gp-department"
-                  className="sm:col-span-4 text-xs font-bold text-[#252B3F]"
-                >
-                  Department <span className="text-[#DC2626]">*</span>
-                </label>
-                <div className="sm:col-span-8">
-                  <input
-                    id="gp-department"
-                    type="text"
-                    disabled={isLocked}
-                    value={departmentInput}
-                    onChange={(e) => setDepartmentInput(e.target.value)}
-                    placeholder="Enter Department (e.g. HDTN)"
-                    className="w-full rounded-sm border border-[#A8B0C8] bg-white px-2.5 py-1.5 text-xs text-[#111827] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
-                  />
-                </div>
-              </div>
 
               {/* 3. Precious Material & 4. Returnable */}
               <div className="grid grid-cols-1 sm:grid-cols-12 items-center gap-1.5">
@@ -804,15 +520,24 @@ export function GatePassEntryForm({
                   Despatch Thru
                 </label>
                 <div className="sm:col-span-8">
-                  <input
+                  <select
                     id="gp-despatch-thru"
-                    type="text"
                     disabled={isLocked}
                     value={despatchThru}
                     onChange={(e) => setDespatchThru(e.target.value)}
-                    placeholder="Transport / Courier / Vehicle Number"
                     className="w-full rounded-sm border border-[#A8B0C8] bg-white px-2.5 py-1.5 text-xs text-[#111827] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
-                  />
+                  >
+                    <option value="">Select Despatch Thru</option>
+                    {DESPATCH_THRU_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                    {despatchThru &&
+                      !DESPATCH_THRU_OPTIONS.includes(
+                        despatchThru as (typeof DESPATCH_THRU_OPTIONS)[number]
+                      ) && <option value={despatchThru}>{despatchThru}</option>}
+                  </select>
                 </div>
               </div>
             </div>
@@ -826,7 +551,7 @@ export function GatePassEntryForm({
                   ITEM DETAILS
                 </h2>
                 <span className="text-[11px] text-[#4A5168]">
-                  Select Stock No to auto-populate master data, or type directly for non-stock items
+                  Select Description, UOM, and enter quantity below
                 </span>
               </div>
               {!isLocked && (
@@ -842,29 +567,20 @@ export function GatePassEntryForm({
             </div>
 
             <div className="max-h-[340px] overflow-auto erp-scroll">
-              <table className="w-full min-w-[860px] border-collapse text-xs">
+              <table className="w-full min-w-[640px] border-collapse text-xs">
                 <thead className="sticky top-0 z-10 bg-[#ECEEF6] text-[#1F2538] border-b border-[#B8BFD4]">
                   <tr>
                     <th className="border-r border-[#C8CEE0] px-2 py-2 text-center w-12 font-bold">
                       S.No
                     </th>
-                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-left w-36 font-bold">
-                      Stock No
-                    </th>
-                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-left min-w-[240px] font-bold">
+                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-left min-w-[260px] font-bold">
                       Description
                     </th>
-                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-center w-20 font-bold">
+                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-center w-24 font-bold">
                       UOM
                     </th>
-                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-left w-28 font-bold">
-                      HSN Code
-                    </th>
-                    <th className="border-r border-[#C8CEE0] px-2 py-2 text-right w-24 font-bold">
-                      Quantity
-                    </th>
                     <th className="border-r border-[#C8CEE0] px-2 py-2 text-right w-28 font-bold">
-                      Price / Unit
+                      Quantity
                     </th>
                     <th className="border-r border-[#C8CEE0] px-2 py-2 text-right w-32 font-bold">
                       Total
@@ -884,51 +600,47 @@ export function GatePassEntryForm({
                         {row.sNo}
                       </td>
                       <td className="border-r border-[#E2E6F2] p-1">
-                        <input
-                          type="text"
-                          disabled={isLocked}
-                          value={row.stockNo}
-                          onChange={(e) => handleRowFieldChange(idx, 'stockNo', e.target.value)}
-                          placeholder="Stock No / NON-STOCK"
-                          aria-label={`Row ${row.sNo} Stock No`}
-                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs font-mono focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
-                        />
-                      </td>
-                      <td className="border-r border-[#E2E6F2] p-1">
-                        <input
-                          type="text"
+                        <select
                           disabled={isLocked}
                           value={row.description}
                           onChange={(e) =>
                             handleRowFieldChange(idx, 'description', e.target.value)
                           }
-                          placeholder="Item description"
                           aria-label={`Row ${row.sNo} Description`}
-                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
-                        />
+                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs text-[#111827] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
+                        >
+                          <option value="">Select Description</option>
+                          {DESCRIPTION_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                          {row.description &&
+                            !DESCRIPTION_OPTIONS.includes(
+                              row.description as (typeof DESCRIPTION_OPTIONS)[number]
+                            ) && <option value={row.description}>{row.description}</option>}
+                        </select>
                       </td>
                       <td className="border-r border-[#E2E6F2] p-1">
-                        <input
-                          type="text"
+                        <select
                           disabled={isLocked}
                           value={row.uom}
                           onChange={(e) =>
-                            handleRowFieldChange(idx, 'uom', e.target.value.toUpperCase())
+                            handleRowFieldChange(idx, 'uom', e.target.value)
                           }
                           aria-label={`Row ${row.sNo} UOM`}
-                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs text-center uppercase focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
-                        />
-                      </td>
-                      <td className="border-r border-[#E2E6F2] p-1">
-                        <input
-                          type="text"
-                          disabled={isLocked}
-                          value={row.hsnCode}
-                          onChange={(e) => handleRowFieldChange(idx, 'hsnCode', e.target.value)}
-                          placeholder="HSN"
-                          aria-label={`Row ${row.sNo} HSN Code`}
-                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs font-mono focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
-                        />
+                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs text-center uppercase text-[#111827] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
+                        >
+                          {UOM_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                          {row.uom &&
+                            !UOM_OPTIONS.includes(row.uom as (typeof UOM_OPTIONS)[number]) && (
+                              <option value={row.uom}>{row.uom}</option>
+                            )}
+                        </select>
                       </td>
                       <td className="border-r border-[#E2E6F2] p-1">
                         <input
@@ -950,32 +662,6 @@ export function GatePassEntryForm({
                               return copy;
                             })
                           }
-                          aria-label={`Row ${row.sNo} Quantity`}
-                          className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs font-mono text-right focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
-                        />
-                      </td>
-                      <td className="border-r border-[#E2E6F2] p-1">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          disabled={isLocked}
-                          value={
-                            rawNumInputs[`${row.id}:pricePerUnit`] !== undefined
-                              ? rawNumInputs[`${row.id}:pricePerUnit`]
-                              : row.pricePerUnit
-                          }
-                          onFocus={(e) => e.currentTarget.select()}
-                          onChange={(e) =>
-                            handleRowFieldChange(idx, 'pricePerUnit', e.target.value)
-                          }
-                          onBlur={() =>
-                            setRawNumInputs((r) => {
-                              const copy = { ...r };
-                              delete copy[`${row.id}:pricePerUnit`];
-                              return copy;
-                            })
-                          }
                           onKeyDown={(e) => {
                             if (
                               e.key === 'Enter' &&
@@ -986,7 +672,7 @@ export function GatePassEntryForm({
                               handleAddRow();
                             }
                           }}
-                          aria-label={`Row ${row.sNo} Price Per Unit`}
+                          aria-label={`Row ${row.sNo} Quantity`}
                           className="w-full rounded-sm border border-[#CBD0E0] bg-white px-1.5 py-1 text-xs font-mono text-right focus:border-[#2B3352] focus:outline-none disabled:bg-[#F9FAFB]"
                         />
                       </td>
@@ -1011,14 +697,11 @@ export function GatePassEntryForm({
                 </tbody>
                 <tfoot className="sticky bottom-0 bg-[#E6EAF4] border-t-2 border-[#A8B0C8] font-bold text-[#111827]">
                   <tr>
-                    <td colSpan={5} className="border-r border-[#C8CEE0] px-3 py-2 text-right">
+                    <td colSpan={3} className="border-r border-[#C8CEE0] px-3 py-2 text-right">
                       TOTAL ({items.length} {items.length === 1 ? 'Row' : 'Rows'})
                     </td>
                     <td className="border-r border-[#C8CEE0] px-2 py-2 text-right font-mono">
                       {totals.totalQuantity}
-                    </td>
-                    <td className="border-r border-[#C8CEE0] px-2 py-2 text-right text-[#4A5168]">
-                      Grand Total
                     </td>
                     <td className="border-r border-[#C8CEE0] px-2 py-2 text-right font-mono">
                       {formatINR(totals.grandTotal)}
@@ -1048,23 +731,21 @@ export function GatePassEntryForm({
                 placeholder="Reason for non-stock movement, calibration notes, or special gate security instructions..."
                 className="w-full rounded-sm border border-[#A8B0C8] bg-white px-2.5 py-1.5 text-xs text-[#111827] focus:border-[#2B3352] focus:outline-none disabled:bg-[#F3F4F6]"
               />
-              {editingGatePass && (
-                <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-[11px] text-[#4A5168]">
-                  <span>
-                    Created by <strong className="text-[#1F2937]">{editingGatePass.createdByName}</strong> ({formatDateTimeShort(editingGatePass.createdAt)})
-                  </span>
-                  {editingGatePass.dispatchDetails && (
-                    <span>
-                      Dispatched by <strong className="text-[#1F2937]">{editingGatePass.dispatchDetails.dispatchedByName}</strong> ({formatDateTimeShort(editingGatePass.dispatchDetails.dispatchedAt)})
-                    </span>
-                  )}
-                  {editingGatePass.acknowledgementDetails && (
-                    <span>
-                      Acknowledged by <strong className="text-[#1F2937]">{editingGatePass.acknowledgementDetails.acknowledgedByName}</strong> ({formatDateTimeShort(editingGatePass.acknowledgementDetails.acknowledgedAt)})
-                    </span>
-                  )}
-                </div>
-              )}
+              {editingGatePass &&
+                (editingGatePass.dispatchDetails || editingGatePass.acknowledgementDetails) && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-[11px] text-[#4A5168]">
+                    {editingGatePass.dispatchDetails && (
+                      <span>
+                        Dispatched by <strong className="text-[#1F2937]">{editingGatePass.dispatchDetails.dispatchedByName}</strong> ({formatDateTimeShort(editingGatePass.dispatchDetails.dispatchedAt)})
+                      </span>
+                    )}
+                    {editingGatePass.acknowledgementDetails && (
+                      <span>
+                        Acknowledged by <strong className="text-[#1F2937]">{editingGatePass.acknowledgementDetails.acknowledgedByName}</strong> ({formatDateTimeShort(editingGatePass.acknowledgementDetails.acknowledgedAt)})
+                      </span>
+                    )}
+                  </div>
+                )}
             </div>
 
             <div className="lg:col-span-5 space-y-2 lg:border-l lg:border-[#C7CDE0] lg:pl-4 flex flex-col justify-center">
@@ -1093,121 +774,20 @@ export function GatePassEntryForm({
             </div>
           </div>
 
-          {/* ACTION BUTTONS BAR */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-[#B8BFD4] bg-[#D7DCEB] px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleSaveClick}
-                disabled={submitting || isLocked}
-                className="inline-flex items-center gap-1.5 rounded bg-[#2B3352] px-4 py-2 text-xs font-bold tracking-wide text-white hover:bg-[#1E243B] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <Save className="w-3.5 h-3.5" />
-                SAVE
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenDispatch}
-                disabled={submitting || status !== 'PENDING'}
-                className="inline-flex items-center gap-1.5 rounded bg-[#1D4ED8] px-4 py-2 text-xs font-bold tracking-wide text-white hover:bg-[#1E40AF] disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <Send className="w-3.5 h-3.5" />
-                CONFIRM DESPATCH
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenAck}
-                disabled={submitting || status !== 'DISPATCHED' || !canAcknowledge}
-                title={
-                  !canAcknowledge
-                    ? 'Only Admin, Supervisor, or Security roles can acknowledge receipt'
-                    : status !== 'DISPATCHED'
-                      ? 'Gate Pass must be DISPATCHED before acknowledgement'
-                      : 'Confirm receipt acknowledgement'
-                }
-                className="inline-flex items-center gap-1.5 rounded bg-[#15803D] px-4 py-2 text-xs font-bold tracking-wide text-white hover:bg-[#166534] disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                ACK CONFIRM
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={onCallReport}
-                className="inline-flex items-center gap-1.5 rounded border border-[#8E96B2] bg-white px-4 py-2 text-xs font-bold tracking-wide text-[#1F2538] hover:bg-[#F3F5FA] whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                CALL REPORT
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePrintClick}
-                className="inline-flex items-center gap-1.5 rounded border border-[#2B3352] bg-[#ECEEF6] px-4 py-2 text-xs font-bold tracking-wide text-[#1E253B] hover:bg-white whitespace-nowrap shrink-0 shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                PRINT INVOICE
-              </button>
-            </div>
+          {/* ACTION BUTTON BAR */}
+          <div className="flex flex-wrap items-center justify-end gap-3 rounded border border-[#B8BFD4] bg-[#D7DCEB] px-4 py-3">
+            <button
+              type="button"
+              onClick={handleSubmitClick}
+              disabled={submitting || isLocked}
+              className="inline-flex items-center gap-2 rounded bg-[#2B3352] px-6 py-2 text-xs font-bold tracking-wide text-white hover:bg-[#1E243B] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0 shadow-xs"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {submitting ? 'SUBMITTING...' : 'SUBMIT'}
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Dispatch Confirmation Dialog */}
-      <ConfirmModal
-        open={dispatchModalOpen}
-        title={`Confirm Dispatch · ${gpNo}`}
-        description="Confirming dispatch will save this Gate Pass, mark its status as DISPATCHED, and lock it from ordinary edits."
-        confirmLabel="Confirm Despatch"
-        confirmTone="primary"
-        loading={submitting}
-        fields={[
-          {
-            key: 'vehicleOrCourierRef',
-            label: 'Vehicle No / Courier AWB Reference',
-            placeholder: 'e.g. MH14-CX-4410 or AWB 88219402',
-            defaultValue: despatchThru,
-          },
-          {
-            key: 'dispatchRemarks',
-            label: 'Dispatch Security / Gate Remarks',
-            placeholder: 'Optional gate verification notes',
-            multiline: true,
-          },
-        ]}
-        onConfirm={handleConfirmDispatch}
-        onCancel={() => setDispatchModalOpen(false)}
-      />
-
-      {/* Acknowledgement Confirmation Dialog */}
-      <ConfirmModal
-        open={ackModalOpen}
-        title={`Acknowledge Receipt · ${gpNo}`}
-        description="Confirm material receipt and record acknowledgement details while preserving original dispatch records."
-        confirmLabel="Confirm Acknowledgement"
-        confirmTone="success"
-        loading={submitting}
-        fields={[
-          {
-            key: 'receivedBy',
-            label: 'Received By (Name & Designation)',
-            placeholder: 'e.g. R. K. Deshmukh (Maintenance Store)',
-            required: true,
-          },
-          {
-            key: 'remarks',
-            label: 'Acknowledgement Remarks',
-            placeholder: 'Condition of material / return verification notes',
-            multiline: true,
-          },
-        ]}
-        onConfirm={handleConfirmAck}
-        onCancel={() => setAckModalOpen(false)}
-      />
     </div>
   );
 }

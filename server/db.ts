@@ -111,13 +111,13 @@ function buildSeedData(): DatabaseSchema {
   const users: StoredUser[] = [
     {
       id: 'usr_admin',
-      username: 'admin',
+      username: 'LINGESH',
       email: 'admin@tjdindustries.in',
-      fullName: 'Rajesh Sharma',
+      fullName: 'LINGESH',
       role: 'ADMIN',
-      departmentId: 'dept_stores',
-      departmentName: 'Central Stores & Logistics',
-      password: 'password123',
+      departmentId: 'dept_hdtn',
+      departmentName: 'HDTN',
+      password: '12345678',
       active: true,
       createdAt: isoOffset(120),
     },
@@ -427,7 +427,7 @@ function buildSeedData(): DatabaseSchema {
     {
       id: 'gp_0001',
       gpNo: 'TJD/NSGP/2026-27/0001',
-      fromAddress: 'TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India',
+      fromAddress: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379',
       sentTo: 'Bharat Hydraulics & Fluid Power Pvt. Ltd.\nPlot E-18, Bhosari MIDC, Pune - 411026\nMaharashtra, India',
       gstNo: '27AAACB7721M1Z4',
       stCode: '27',
@@ -500,7 +500,7 @@ function buildSeedData(): DatabaseSchema {
     {
       id: 'gp_0002',
       gpNo: 'TJD/NSGP/2026-27/0002',
-      fromAddress: 'TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India',
+      fromAddress: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379',
       sentTo: 'NABL Precision Metrology Labs\n42 Peenya Industrial Area Phase II, Bengaluru - 560058\nKarnataka, India',
       gstNo: '29AABCN4920L1Z2',
       stCode: '29',
@@ -559,7 +559,7 @@ function buildSeedData(): DatabaseSchema {
     {
       id: 'gp_0003',
       gpNo: 'TJD/NSGP/2026-27/0003',
-      fromAddress: 'TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India',
+      fromAddress: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379',
       sentTo: 'Siemens Industrial Automation Service Center\nPlot 7B, Talegaon MIDC, Pune - 410507\nMaharashtra, India',
       gstNo: '27AAACS4521Q1Z9',
       stCode: '27',
@@ -618,7 +618,7 @@ function buildSeedData(): DatabaseSchema {
     {
       id: 'gp_0004',
       gpNo: 'TJD/NSGP/2026-27/0004',
-      fromAddress: 'TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India',
+      fromAddress: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379',
       sentTo: 'Heraeus Electro-Nite India Pvt. Ltd.\nGIDC Makarpura, Vadodara - 390010\nGujarat, India',
       gstNo: '24AAACH8812D1Z7',
       stCode: '24',
@@ -661,7 +661,7 @@ function buildSeedData(): DatabaseSchema {
     {
       id: 'gp_0005',
       gpNo: 'TJD/NSGP/2026-27/0005',
-      fromAddress: 'TJD Industries Pvt. Ltd.\nPlot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India',
+      fromAddress: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION 29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126\nPH: 9488664379',
       sentTo: 'Apex Tooling & Precision Grinders\nShed 14, Chakan Industrial Area Phase III, Pune - 410501\nMaharashtra, India',
       gstNo: '27AADCA3309H1Z1',
       stCode: '27',
@@ -704,11 +704,11 @@ function buildSeedData(): DatabaseSchema {
   ];
 
   const settings: CompanySettings = {
-    companyName: 'TJD Industries Pvt. Ltd.',
-    companyAddress: 'Plot No. B-42, MIDC Chakan Industrial Area, Phase II, Pune - 410501, Maharashtra, India',
+    companyName: 'DTN MATERIALS - HOSUR TITAN COMPANY LIMITED JEWELLERY DIVISION',
+    companyAddress: '29,SIPCOT INDUSTRIAL COMPLEX HOSUR TAMIL NADU-635126',
     companyGstin: '27AABCT4829K1Z8',
     homeStateCode: '27',
-    phone: '+91 20 6712 4800',
+    phone: '9488664379',
     email: 'stores@tjdindustries.in',
     gpPrefix: 'TJD/NSGP/2026-27/',
     defaultTaxPercent: 18,
@@ -745,14 +745,33 @@ function ensureDb(): DatabaseSchema {
   );
   const departments = hasHdtn ? loadedDepartments : [defaults.departments[0], ...loadedDepartments];
 
-  const db: DatabaseSchema = {
-    users: Array.isArray(parsed.users) ? parsed.users : defaults.users,
-    departments,
-    stockItems: Array.isArray(parsed.stockItems) ? parsed.stockItems : defaults.stockItems,
-    gatePasses: Array.isArray(parsed.gatePasses)
-      ? parsed.gatePasses.map((gp) => ({
+  const needsOrgMigration =
+    !parsed.settings || parsed.settings.companyName === 'TJD Industries Pvt. Ltd.';
+  const mergedSettings = parsed.settings
+    ? {
+        ...defaults.settings,
+        ...parsed.settings,
+        ...(needsOrgMigration
+          ? {
+              companyName: defaults.settings.companyName,
+              companyAddress: defaults.settings.companyAddress,
+              phone: defaults.settings.phone,
+            }
+          : {}),
+      }
+    : defaults.settings;
+
+  const oldPlaceholderPrefix = 'TJD Industries Pvt. Ltd.\nPlot No. B-42';
+  const inbuiltFromAddress = `${defaults.settings.companyName} ${defaults.settings.companyAddress}\nPH: ${defaults.settings.phone}`;
+  let migratedGatePassFrom = false;
+  const loadedGatePasses = Array.isArray(parsed.gatePasses)
+    ? parsed.gatePasses.map((gp) => {
+        const rawFrom = gp.fromAddress ?? '';
+        const shouldReplaceFrom = rawFrom.startsWith(oldPlaceholderPrefix) || rawFrom.trim() === '';
+        if (shouldReplaceFrom) migratedGatePassFrom = true;
+        return {
           ...gp,
-          fromAddress: gp.fromAddress ?? '',
+          fromAddress: shouldReplaceFrom ? inbuiltFromAddress : rawFrom,
           sentTo: gp.sentTo ?? '',
           gstNo: gp.gstNo ?? '',
           stCode: gp.stCode ?? '',
@@ -763,15 +782,48 @@ function ensureDb(): DatabaseSchema {
           remarks: gp.remarks ?? '',
           items: Array.isArray(gp.items) ? gp.items : [],
           auditLog: Array.isArray(gp.auditLog) ? gp.auditLog : [],
-        }))
-      : defaults.gatePasses,
-    settings: parsed.settings ? { ...defaults.settings, ...parsed.settings } : defaults.settings,
+        };
+      })
+    : defaults.gatePasses;
+
+  let migratedAdminUser = false;
+  const loadedUsers = (Array.isArray(parsed.users) ? parsed.users : defaults.users).map((u) => {
+    if (
+      u.id === 'usr_admin' &&
+      (u.username === 'admin' || u.fullName === 'Rajesh Sharma' || u.password === 'password123')
+    ) {
+      migratedAdminUser = true;
+      return {
+        ...u,
+        username: 'LINGESH',
+        fullName: 'LINGESH',
+        password: '12345678',
+      };
+    }
+    return u;
+  });
+
+  const db: DatabaseSchema = {
+    users: loadedUsers,
+    departments,
+    stockItems: (Array.isArray(parsed.stockItems) ? parsed.stockItems : defaults.stockItems).map(
+      (s) => ({
+        ...s,
+        vendorName: s.vendorName ?? s.stockNo ?? '',
+        receiver: s.receiver ?? '',
+        entryDate: s.entryDate ?? (s.createdAt ? s.createdAt.slice(0, 10) : ''),
+        invoiceNo: s.invoiceNo ?? '',
+        quantity: typeof s.quantity === 'number' ? s.quantity : 0,
+      })
+    ),
+    gatePasses: loadedGatePasses,
+    settings: mergedSettings,
     sequenceCounter:
       typeof parsed.sequenceCounter === 'number'
         ? parsed.sequenceCounter
         : defaults.sequenceCounter,
   };
-  if (!hasHdtn) {
+  if (!hasHdtn || needsOrgMigration || migratedGatePassFrom || migratedAdminUser) {
     saveDb(db);
   }
   return db;
@@ -905,7 +957,7 @@ export interface SaveGatePassInput {
   stCode: string;
   wayBillNo: string;
   docRefNo: string;
-  departmentId: string;
+  departmentId?: string;
   departmentName?: string;
   preciousMaterial: boolean;
   returnable: boolean;
@@ -934,19 +986,15 @@ export function saveGatePass(
 
   const rawDeptName = (input.departmentName || '').trim();
   const rawDeptId = (input.departmentId || '').trim();
-  if (!rawDeptId && !rawDeptName) {
-    return { error: 'Department is mandatory.', statusCode: 400 };
-  }
-
-  const deptQuery = (rawDeptName || rawDeptId).toLowerCase();
+  const deptQuery = (rawDeptName || rawDeptId || 'HDTN').toLowerCase();
   const dept = db.departments.find(
     (d) =>
-      d.id === rawDeptId ||
+      (rawDeptId && d.id === rawDeptId) ||
       d.code.toLowerCase() === deptQuery ||
       d.name.toLowerCase() === deptQuery
   );
-  const resolvedDeptId = dept ? dept.id : rawDeptId || 'dept_custom';
-  const resolvedDeptName = dept ? dept.name : rawDeptName || rawDeptId;
+  const resolvedDeptId = dept ? dept.id : rawDeptId || 'dept_hdtn';
+  const resolvedDeptName = dept ? dept.name : rawDeptName || rawDeptId || 'HDTN';
 
   const validItems = (input.items || []).filter(
     (item) => item.description.trim() !== '' && Number(item.quantity) > 0
@@ -984,6 +1032,13 @@ export function saveGatePass(
     ? round2(Math.max(0, Number.isFinite(parsedAppValue) ? parsedAppValue : 0))
     : totals.grandTotal;
   const nowIso = new Date().toISOString();
+  const defaultFromLine1 = [db.settings.companyName, db.settings.companyAddress]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const defaultFrom = db.settings.phone
+    ? `${defaultFromLine1}${defaultFromLine1 ? '\n' : ''}PH: ${db.settings.phone}`
+    : defaultFromLine1;
 
   if (input.id) {
     const idx = db.gatePasses.findIndex((g) => g.id === input.id);
@@ -1014,7 +1069,7 @@ export function saveGatePass(
     const updated: GatePass = {
       ...existing,
       gpNo: requestedGpNo,
-      fromAddress: (input.fromAddress ?? existing.fromAddress ?? '').trim(),
+      fromAddress: (input.fromAddress ?? existing.fromAddress ?? '').trim() || defaultFrom,
       sentTo: input.sentTo.trim(),
       gstNo: (input.gstNo || '').trim().toUpperCase(),
       stCode: (input.stCode || '').trim(),
@@ -1085,11 +1140,10 @@ export function saveGatePass(
     }
   }
 
-  const defaultFrom = `${db.settings.companyName}\n${db.settings.companyAddress}`;
   const created: GatePass = {
     id: makeId('gp'),
     gpNo: requestedGpNo,
-    fromAddress: (input.fromAddress ?? defaultFrom).trim(),
+    fromAddress: (input.fromAddress ?? defaultFrom).trim() || defaultFrom,
     sentTo: input.sentTo.trim(),
     gstNo: (input.gstNo || '').trim().toUpperCase(),
     stCode: (input.stCode || '').trim(),
@@ -1159,9 +1213,9 @@ export function dispatchGatePass(
     };
   }
 
-  if (!existing.sentTo.trim() || !existing.departmentId || existing.items.length === 0) {
+  if (!existing.sentTo.trim() || existing.items.length === 0) {
     return {
-      error: 'Cannot confirm dispatch: Sent To, Department, and Item Details are required.',
+      error: 'Cannot confirm dispatch: Sent To and Item Details are required.',
       statusCode: 400,
     };
   }
@@ -1338,7 +1392,7 @@ export function listStockItems(): StockItem[] {
 }
 
 export function upsertStockItem(
-  input: Partial<StockItem> & { stockNo: string; description: string },
+  input: Partial<StockItem> & { description: string; vendorName?: string; stockNo?: string },
   actorId: string
 ): { stockItem?: StockItem; error?: string } {
   const db = ensureDb();
@@ -1347,32 +1401,44 @@ export function upsertStockItem(
     return { error: 'Insufficient permissions to manage Stock Master.' };
   }
 
-  const stockNo = input.stockNo.trim().toUpperCase();
-  const description = input.description.trim();
-  if (!stockNo || !description) {
-    return { error: 'Stock No and Description are required.' };
+  const vendorName = (input.vendorName ?? input.stockNo ?? '').trim();
+  const description = (input.description || '').trim();
+  if (!vendorName || !description) {
+    return { error: 'Vendor Name and Description are required.' };
   }
-
-  const duplicate = db.stockItems.find(
-    (s) => s.stockNo.toUpperCase() === stockNo && s.id !== input.id
-  );
-  if (duplicate) {
-    return { error: `Stock No ${stockNo} already exists.` };
-  }
+  const stockNo = (input.stockNo ?? vendorName).trim();
 
   if (input.id) {
     const idx = db.stockItems.findIndex((s) => s.id === input.id);
     if (idx === -1) return { error: 'Stock item not found.' };
+    const existingItem = db.stockItems[idx];
     const updated: StockItem = {
-      ...db.stockItems[idx],
+      ...existingItem,
       stockNo,
+      vendorName,
       description,
       uom: (input.uom || 'NOS').trim().toUpperCase(),
-      hsnCode: (input.hsnCode || '').trim(),
+      hsnCode: (input.hsnCode ?? existingItem.hsnCode ?? '').trim(),
+      invoiceNo:
+        input.invoiceNo !== undefined
+          ? String(input.invoiceNo).trim()
+          : (existingItem.invoiceNo ?? ''),
+      quantity:
+        input.quantity !== undefined
+          ? round2(Math.max(0, Number(input.quantity) || 0))
+          : (existingItem.quantity ?? 0),
       unitPrice: round2(Math.max(0, Number(input.unitPrice) || 0)),
       taxPercent: Math.max(0, Number(input.taxPercent) || 0),
-      category: (input.category || 'General').trim(),
-      active: input.active !== undefined ? Boolean(input.active) : db.stockItems[idx].active,
+      category: (input.category ?? existingItem.category ?? 'General').trim(),
+      receiver:
+        input.receiver !== undefined
+          ? String(input.receiver).trim()
+          : (existingItem.receiver ?? ''),
+      entryDate:
+        input.entryDate !== undefined
+          ? String(input.entryDate).trim()
+          : (existingItem.entryDate ?? ''),
+      active: input.active !== undefined ? Boolean(input.active) : existingItem.active,
     };
     db.stockItems[idx] = updated;
     saveDb(db);
@@ -1382,12 +1448,17 @@ export function upsertStockItem(
   const created: StockItem = {
     id: makeId('stk'),
     stockNo,
+    vendorName,
     description,
     uom: (input.uom || 'NOS').trim().toUpperCase(),
     hsnCode: (input.hsnCode || '').trim(),
+    invoiceNo: (input.invoiceNo || '').trim(),
+    quantity: round2(Math.max(0, Number(input.quantity) || 0)),
     unitPrice: round2(Math.max(0, Number(input.unitPrice) || 0)),
     taxPercent: Math.max(0, Number(input.taxPercent) || 0),
     category: (input.category || 'General').trim(),
+    receiver: (input.receiver || '').trim(),
+    entryDate: (input.entryDate || new Date().toISOString().slice(0, 10)).trim(),
     active: input.active !== undefined ? Boolean(input.active) : true,
     createdAt: new Date().toISOString(),
   };
